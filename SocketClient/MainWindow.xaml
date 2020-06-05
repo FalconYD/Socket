@@ -1,0 +1,54 @@
+﻿<Window x:Class="SocketClient.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SocketClient"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="480" Width="640" Closed="Window_Closed">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="5*"/>
+            <ColumnDefinition Width="1*"/>
+        </Grid.ColumnDefinitions>
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="12*"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="IP :" HorizontalAlignment="Center"  VerticalAlignment="Center"/>
+                <TextBox  Grid.Column="1" Name="tb_IP" Margin="0,0,5,0" Text="TextBox" VerticalAlignment="Center" TextChanged="tb_IP_TextChanged"/>
+                <TextBlock Grid.Column="2" Text="Port :" HorizontalAlignment="Center"  VerticalAlignment="Center"/>
+                <TextBox  Grid.Column="3" Name="tb_Port" Margin="0,0,5,0" Text="TextBox" VerticalAlignment="Center" TextChanged="tb_Port_TextChanged"/>
+            </Grid>
+            <Grid Grid.Row="1">
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="10*"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+                    <ListBox Name="list_Message" Grid.Row="0" Margin="5,5,5,5"/>
+                    <TextBox Name="tb_Message" Grid.Row="1" Margin="5,5,5,5" Text="TextBox"/>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="1*"/>
+            </Grid.RowDefinitions>
+            <Button Grid.Row="0" Name="bn_Conn" Content="Connect" Margin="3,10,3,10" Click="bn_Run_Click"/>
+            <Button Grid.Row="1" Name="bn_DisConn" Content="DisConnect" Margin="3,10,3,10" Click="bn_Stop_Click"/>
+            <Button Grid.Row="2" Name="bn_Send" Content="Send" Margin="3,10,3,10" Click="bn_Send_Click"/>
+        </Grid>
+    </Grid>
+</Window>
