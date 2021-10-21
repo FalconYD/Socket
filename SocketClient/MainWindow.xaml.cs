@@ -17,6 +17,7 @@ using System.Windows.Shapes;
 using System.Windows.Interop;
 using System.Threading;
 using System.Windows.Threading;
+using System.IO;
 
 namespace SocketClient
 {
@@ -47,6 +48,17 @@ namespace SocketClient
             tb_Port.Text = strPort;
         }
 
+        private void SetKeepAlive(Socket sock)
+        {
+            sock.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            MemoryStream ms = new MemoryStream(sizeof(uint) * 3);
+            ms.Write(BitConverter.GetBytes((int)1), 0, sizeof(int));
+            ms.Write(BitConverter.GetBytes((int)2000), 0, sizeof(int));
+            ms.Write(BitConverter.GetBytes((int)1000), 0, sizeof(int));
+            sock.IOControl(IOControlCode.KeepAliveValues, ms.GetBuffer(), BitConverter.GetBytes(0));
+            ms.Close();
+        }
+
         private void SendAsClient()
         {
             try
@@ -56,11 +68,12 @@ namespace SocketClient
                     return;
                 }
                 client = new TcpClient();
+                SetKeepAlive(client.Client);
                 client.Connect(IPAddress.Parse(strIP), Convert.ToInt32(strPort));
-                
                 stream = client.GetStream();
 
                 byte[] message = new byte[nMaxBufferCount];
+                byte[] check = { 0xFF };
                 string strMsg;
                 int byteRead;
                
@@ -69,7 +82,12 @@ namespace SocketClient
                     if (stream.DataAvailable)
                     {
                         byteRead = stream.Read(message, 0, message.Length);
+
+                        if (message[0] == 0xFF) continue;
+
                         strMsg = Encoding.ASCII.GetString(message);
+
+
                         Dispatcher.Invoke(DispatcherPriority.Normal, new Action(delegate
                         {
                             list_Message.Items.Add(DateTime.Now.ToString("[yyyymmdd_hh.mm.ss]") + strMsg);
@@ -87,6 +105,9 @@ namespace SocketClient
 
         private void bn_Run_Click(object sender, RoutedEventArgs e)
         {
+            bn_Conn.IsEnabled = false;
+            bn_DisConn.IsEnabled = true;
+            bn_Send.IsEnabled = true;
             bSend = true;
             clientThread = new Thread(new ThreadStart(SendAsClient));
             clientThread.Start();
@@ -105,14 +126,19 @@ namespace SocketClient
                     client = null;
                 }
             }
+            bn_Conn.IsEnabled = true;
+            bn_DisConn.IsEnabled = false;
+            bn_Send.IsEnabled = false;
         }
 
         private void bn_Send_Click(object sender, RoutedEventArgs e)
         {
             string strMsg = tb_Message.Text;
-            byte[] buffer = Encoding.ASCII.GetBytes(strMsg);
+            byte[] buffer = new byte[1024];
+            byte[] msg = Encoding.ASCII.GetBytes(strMsg);
+            Array.Copy(msg, buffer, msg.Length);
 
-            if(stream != null)
+            if (stream != null)
                 stream.Write(buffer, 0, buffer.Length);
             list_Message.Items.Add(DateTime.Now.ToString("[yyyymmdd_hh.mm.ss]") + strMsg);
         }

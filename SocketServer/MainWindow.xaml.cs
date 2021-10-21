@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -24,9 +25,15 @@ namespace SocketServer
     /// </summary>
     public partial class MainWindow : Window
     {
+        struct ST_CLIENT
+        {
+            public string endpoint;
+            public Thread thread;
+            public TcpClient tcpclient;
+        }
         TcpListener tcpListener;
         Thread tcpThread;
-        List<TcpClient> listclient = new List<TcpClient>();
+        List<ST_CLIENT> listclient = new List<ST_CLIENT>();
         List<Thread> listReadThread = new List<Thread>();
         bool bListener = false;
         public MainWindow()
@@ -45,6 +52,9 @@ namespace SocketServer
                 tcpListener.Stop();
             }
             tcpListener = new TcpListener(IPAddress.Any, nPort);
+            
+            SetKeepAlive(tcpListener.Server);
+
             Dispatcher.Invoke(DispatcherPriority.Normal, new Action(delegate
             {
                 tb_IP.Text = IPAddress.Any.ToString();
@@ -57,13 +67,17 @@ namespace SocketServer
             {
                 try
                 {
-                    TcpClient client = tcpListener.AcceptTcpClient();
-                    listclient.Add(client);
-                    listReadThread.Add(new Thread(new ParameterizedThreadStart(ClientRecive)));
-                    listReadThread[listReadThread.Count - 1].Start(client);
+                    ST_CLIENT stClient = new ST_CLIENT();
+                    stClient.tcpclient = tcpListener.AcceptTcpClient();
+                    stClient.tcpclient.ReceiveTimeout = 1000;
+                    stClient.endpoint = stClient.tcpclient.Client.RemoteEndPoint.ToString();
+                    stClient.thread = new Thread(new ParameterizedThreadStart(ClientRecive));
+                    listclient.Add(stClient);
+                    listReadThread.Add(stClient.thread);
+                    listReadThread[listReadThread.Count - 1].Start(stClient);
                     Dispatcher.Invoke(DispatcherPriority.Normal, new Action(delegate
                     {
-                        list_Client.Items.Add(client.Client.LocalEndPoint.ToString());
+                        list_Client.Items.Add(stClient.endpoint);
                     }));
                 }
                 catch (Exception ex)
@@ -74,22 +88,42 @@ namespace SocketServer
             }
         }
 
+        private void SetKeepAlive(Socket sock)
+        {
+            MemoryStream ms = new MemoryStream(sizeof(uint) * 3);
+            ms.Write(BitConverter.GetBytes((int)1), 0, sizeof(int));
+            ms.Write(BitConverter.GetBytes((int)2000), 0, sizeof(int));
+            ms.Write(BitConverter.GetBytes((int)1000), 0, sizeof(int));
+            sock.IOControl(IOControlCode.KeepAliveValues, ms.GetBuffer(), BitConverter.GetBytes(0));
+            ms.Close();
+        }
+
         /// <summary>
         /// Client Data Recive Thread
         /// 접속된 클라이언트 수 만큼 표기.
         /// </summary>
         /// <param name="client">TCP Client Type</param>
-        private void ClientRecive(Object client)
+        private void ClientRecive(object client)
         {
-            TcpClient mClient = client as TcpClient;
-            NetworkStream stream = mClient.GetStream();
+            ST_CLIENT stClient = (ST_CLIENT)client;
+            NetworkStream stream = stClient.tcpclient.GetStream();
             byte[] message = new byte[1024];
+            byte[] check = { 0xFF };
+            int nChkCnt = 0;
             string strMsg;
             try
             {
-                while (true)
+                while (stClient.tcpclient.Connected)
                 {
                     Thread.Sleep(10);
+                    
+                    // 연결 상태 갱신을 위해 1초에 한번씩 데이터 전송.
+                    if (nChkCnt++ < 100)
+                    {
+                        stream.Write(check, 0, check.Length);
+                        nChkCnt = 0;
+                    }
+
                     if (stream.DataAvailable)
                     {
                         stream.Read(message, 0, message.Length);
@@ -104,9 +138,23 @@ namespace SocketServer
             catch (ThreadAbortException ex)
             {
                 System.Diagnostics.Trace.WriteLine(ex.Message);
-                stream.Close();
-                mClient.Close();
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            finally
+            {
+                stream.Close();
+                stClient.tcpclient.Close();
+            }
+
+            Dispatcher.Invoke(DispatcherPriority.Normal, new Action(delegate
+            {
+                list_Client.Items.Remove(stClient.endpoint);
+            }));
+            listclient.Remove(stClient);
+            listReadThread.Remove(stClient.thread);
         }
 
         /// <summary>
@@ -119,21 +167,17 @@ namespace SocketServer
                 foreach (var thread in listReadThread)
                 {
                     if(!thread.Join(1000))
-                        thread.Abort();
+                        thread.Abort(); 
                 }
             }
-            //             if (listclient.Count > 0)
-            //             {
-            //                 foreach (var client in listclient)
-            //                 {
-            //                     client.Close();
-            //                 }
-            //             }
         }
 
         #region Control Event
         private void bn_Run_Click(object sender, RoutedEventArgs e)
         {
+            bn_Run.IsEnabled = false;
+            bn_Stop.IsEnabled = true;
+            bn_Send.IsEnabled = true;
             tcpThread = new Thread(new ThreadStart(TcpServerRun));
             tcpThread.Start();
         }
@@ -150,6 +194,9 @@ namespace SocketServer
             }
 
             fnStopThread();
+            bn_Run.IsEnabled = true;
+            bn_Stop.IsEnabled = false;
+            bn_Send.IsEnabled = false;
         }
 
         private void bn_Send_Click(object sender, RoutedEventArgs e)
@@ -162,7 +209,7 @@ namespace SocketServer
                 // 연결되있는 클라이언트 전체에 데이터 전송.
                 foreach (var client in listclient)
                 {
-                    client.GetStream().Write(buff, 0, buff.Length);
+                    client.tcpclient.GetStream().Write(buff, 0, buff.Length);
                 }
                 list_Message.Items.Add(DateTime.Now.ToString("[yyyymmdd_hh.mm.ss]") + strMsg);
             }

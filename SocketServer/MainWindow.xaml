@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SocketServer"
         mc:Ignorable="d"
-        Title="MainWindow" Height="480" Width="640" Closed="Window_Closed">
+        Title="WPF Server" Height="480" Width="640" Closed="Window_Closed">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="5*"/>
@@ -51,9 +51,9 @@
                 <RowDefinition Height="1*"/>
                 <RowDefinition Height="1*"/>
             </Grid.RowDefinitions>
-            <Button Grid.Row="0" Name="bn_Run" Content="Server Run" Margin="3,10,3,10" Click="bn_Run_Click"/>
-            <Button Grid.Row="1" Name="bn_Stop" Content="Server Stop" Margin="3,10,3,10" Click="bn_Stop_Click"/>
-            <Button Grid.Row="2" Name="bn_Send" Content="Send" Margin="3,10,3,10" Click="bn_Send_Click"/>
+            <Button Grid.Row="0" Name="bn_Run"  IsEnabled="True" Content="Server Run" Margin="3,10,3,10" Click="bn_Run_Click"/>
+            <Button Grid.Row="1" Name="bn_Stop" IsEnabled="False" Content="Server Stop" Margin="3,10,3,10" Click="bn_Stop_Click"/>
+            <Button Grid.Row="2" Name="bn_Send" IsEnabled="False" Content="Send" Margin="3,10,3,10" Click="bn_Send_Click"/>
         </Grid>
     </Grid>
 </Window>
